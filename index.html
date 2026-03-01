@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Workout Log</title>
+
+  <!-- PWA -->
+
+  <link rel="manifest" href="manifest.json" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Workout" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <meta name="theme-color" content="#0a0a0a" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --bg: #0a0a0a;
+      --surface: #131313;
+      --border: #1f1f1f;
+      --border2: #2a2a2a;
+      --text: #e0e0e0;
+      --muted: #555;
+      --gold: #f0c040;
+      --cardio: #f07050;
+      --strength: #5090f0;
+      --done: #60c090;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bot: env(safe-area-inset-bottom, 0px);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      font-family: 'DM Mono', monospace;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: calc(var(--safe-top) + 24px) 20px calc(var(--safe-bot) + 40px);
+      max-width: 520px;
+      margin: 0 auto;
+    }
+
+    h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 52px;
+      letter-spacing: 5px;
+      color: var(--gold);
+      line-height: 1;
+    }
+
+    .subtitle {
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 3px;
+      margin-top: 4px;
+    }
+
+    /* Stats */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin: 28px 0 32px;
+    }
+
+    .stat-box {
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      padding: 14px 10px;
+      text-align: center;
+    }
+
+    .stat-value {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 30px;
+      line-height: 1;
+    }
+
+    .stat-label {
+      font-size: 9px;
+      color: var(--muted);
+      letter-spacing: 1.5px;
+      margin-top: 4px;
+    }
+
+    /* Legend */
+    .legend {
+      display: flex;
+      gap: 20px;
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+    }
+
+    .legend span::before { content: '● '; }
+    .legend .c::before { color: var(--cardio); }
+    .legend .s::before { color: var(--strength); }
+
+    /* Table */
+    .table-wrap {
+      border: 1px solid var(--border2);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .table-head {
+      display: grid;
+      grid-template-columns: 1fr 68px 68px 72px;
+      background: var(--surface);
+      padding: 10px 14px;
+      border-bottom: 2px solid var(--gold);
+      font-size: 9px;
+      letter-spacing: 2px;
+      color: var(--muted);
+    }
+    .table-head span:not(:first-child) { text-align: center; }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 68px 68px 72px;
+      padding: 11px 14px;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.1s;
+    }
+    .row:last-child { border-bottom: none; }
+    .row.current { border-left: 3px solid var(--gold); background: rgba(240,192,64,0.03); }
+
+    .week-label { font-size: 11px; line-height: 1.4; }
+
+    .now-badge {
+      display: inline-block;
+      font-size: 8px;
+      background: var(--gold);
+      color: #000;
+      font-weight: 700;
+      padding: 2px 5px;
+      letter-spacing: 1px;
+      margin-top: 3px;
+      animation: pulse 2s infinite;
+    }
+
+    .col-center { text-align: center; }
+
+    .check-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 6px;
+      border: 2px solid var(--border2);
+      background: var(--surface);
+      color: var(--muted);
+      font-size: 18px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    .check-btn:active { transform: scale(0.9); }
+    .check-btn.on-cardio { background: var(--cardio); border-color: var(--cardio); color: #fff; }
+    .check-btn.on-strength { background: var(--strength); border-color: var(--strength); color: #fff; }
+
+    .badge {
+      display: inline-block;
+      font-size: 9px;
+      padding: 3px 8px;
+      letter-spacing: 1px;
+    }
+    .badge-done { background: rgba(96,192,144,0.12); color: var(--done); }
+    .badge-half { background: rgba(240,192,64,0.1); color: var(--gold); }
+    .badge-none { color: #2a2a2a; }
+
+    /* empty state */
+    .empty { font-size: 10px; color: #2a2a2a; }
+
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+    /* install banner */
+    #install-banner {
+      display: none;
+      background: var(--surface);
+      border: 1px solid var(--border2);
+      border-left: 3px solid var(--gold);
+      padding: 12px 14px;
+      margin-bottom: 20px;
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+  </style>
+
+</head>
+<body>
+
+  <h1>WORKOUT<br>LOG</h1>
+  <p class="subtitle">주 2회 운동 목표 트래커</p>
+
+  <div id="install-banner">
+    📲 Safari에서 <strong style="color:var(--text)">공유 → 홈 화면에 추가</strong>를 누르면 앱으로 설치할 수 있어요.
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="legend">
+    <span class="c">유산소 (Cardio)</span>
+    <span class="s">헬스 (Strength)</span>
+  </div>
+
+  <div class="table-wrap">
+    <div class="table-head">
+      <span>WEEK</span>
+      <span>C</span>
+      <span>S</span>
+      <span>STATUS</span>
+    </div>
+    <div id="rows"></div>
+  </div>
+
+  <script>
+    const WEEKS = 12;
+    const STORAGE_KEY = 'wl-data-v1';
+
+    function getWeekStart(date) {
+      const d = new Date(date);
+      d.setHours(0,0,0,0);
+      const day = d.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      d.setDate(d.getDate() + diff);
+      return d;
+    }
+
+    function weekKey(date) {
+      return getWeekStart(date).toISOString().split('T')[0];
+    }
+
+    function weekLabel(key) {
+      const s = new Date(key);
+      const e = new Date(key);
+      e.setDate(e.getDate() + 6);
+      const fmt = d => `${d.getMonth()+1}/${d.getDate()}`;
+      return [`${fmt(s)}`, `~ ${fmt(e)}`];
+    }
+
+    function getWeeks() {
+      const weeks = [];
+      const today = new Date();
+      for (let i = WEEKS - 1; i >= 0; i--) {
+        const d = new Date(today);
+        d.setDate(d.getDate() - i * 7);
+        const k = weekKey(d);
+        if (!weeks.includes(k)) weeks.push(k);
+      }
+      return weeks;
+    }
+
+    let data = {};
+    try { data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); } catch(e) {}
+
+    function save() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+
+    function toggle(week, type) {
+      if (!data[week]) data[week] = {};
+      data[week][type] = !data[week][type];
+      save();
+      render();
+    }
+
+    function render() {
+      const weeks = getWeeks();
+      const currentWeek = weekKey(new Date());
+
+      // Stats
+      let streak = 0;
+      for (let i = weeks.length - 1; i >= 0; i--) {
+        const d = data[weeks[i]];
+        if (d?.cardio && d?.strength) streak++;
+        else break;
+      }
+      const total = weeks.filter(w => data[w]?.cardio && data[w]?.strength).length;
+      const rate = Math.round(total / WEEKS * 100);
+
+      const statsEl = document.getElementById('stats');
+      statsEl.innerHTML = [
+        { label: '연속 달성', value: streak + '주', color: streak > 0 ? 'var(--gold)' : 'var(--muted)' },
+        { label: `${WEEKS}주 달성`, value: total + '회', color: 'var(--done)' },
+        { label: '달성률', value: rate + '%', color: 'var(--strength)' },
+      ].map(s => `
+        <div class="stat-box">
+          <div class="stat-value" style="color:${s.color}">${s.value}</div>
+          <div class="stat-label">${s.label}</div>
+        </div>
+      `).join('');
+
+      // Rows
+      const rowsEl = document.getElementById('rows');
+      rowsEl.innerHTML = weeks.map(week => {
+        const isCurrent = week === currentWeek;
+        const d = data[week] || {};
+        const [line1, line2] = weekLabel(week);
+        const status = (d.cardio && d.strength) ? 'done' : (d.cardio || d.strength) ? 'half' : 'none';
+        return `
+          <div class="row ${isCurrent ? 'current' : ''}">
+            <div class="week-label">
+              <div>${line1}</div>
+              <div style="color:var(--muted)">${line2}</div>
+              ${isCurrent ? '<div><span class="now-badge">NOW</span></div>' : ''}
+            </div>
+            <div class="col-center">
+              <button class="check-btn ${d.cardio ? 'on-cardio' : ''}" onclick="toggle('${week}','cardio')">
+                ${d.cardio ? '✓' : '○'}
+              </button>
+            </div>
+            <div class="col-center">
+              <button class="check-btn ${d.strength ? 'on-strength' : ''}" onclick="toggle('${week}','strength')">
+                ${d.strength ? '✓' : '○'}
+              </button>
+            </div>
+            <div class="col-center">
+              ${status === 'done' ? '<span class="badge badge-done">DONE ✦</span>' : ''}
+              ${status === 'half' ? '<span class="badge badge-half">HALF</span>' : ''}
+              ${status === 'none' ? '<span class="badge badge-none">—</span>' : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Show install hint on iOS Safari (not standalone)
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const isStandalone = window.navigator.standalone;
+    if (isIOS && !isStandalone) {
+      document.getElementById('install-banner').style.display = 'block';
+    }
+
+    render();
+  </script>
+
+</body>
+</html>
